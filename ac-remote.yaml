@@ -179,20 +179,19 @@ beep_detector:
           id(last_action_text).publish_state("External remote detected");
         }
 
-# --- IR Transmitter ---
+# --- IR Transmitter (M5Stack IR Unit TX — Grove pin 1, GPIO32) ---
 remote_transmitter:
-  pin: GPIO9
+  pin: GPIO32
   carrier_duty_percent: 50%
 
-# --- IR Receiver (external TSOP38238 on GPIO26) ---
+# --- IR Receiver (M5Stack IR Unit RX — Grove pin 2, GPIO33) ---
 remote_receiver:
   id: ir_receiver
   pin:
-    number: GPIO26
+    number: GPIO33
     inverted: true
     mode:
       input: true
-      pullup: true
   dump:
     - raw
     - pronto
@@ -503,7 +502,7 @@ script:
                 state: "IR Learn mode ON — point remote"
             - logger.log:
                 level: INFO
-                format: "IR Learn mode enabled. Point your remote at GPIO26 and press buttons. Watch logs for raw codes."
+                format: "IR Learn mode enabled. Point your remote at the M5Stack IR Unit and press buttons. Watch logs for raw codes."
 
   # Beep calibration
   - id: start_calibration

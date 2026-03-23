@@ -38,14 +38,14 @@ Mic runs continuously. Beep detected while `self_triggered=false` → external r
 
 | Function | Pin |
 |---|---|
-| IR LED TX | GPIO9 |
+| IR LED TX | GPIO32 (M5Stack IR Unit, Grove pin 1) |
 | PDM Mic CLK | GPIO0 |
 | PDM Mic DATA | GPIO34 |
 | Display SPI | CLK=13, MOSI=15, CS=5, DC=23, RST=18 |
 | AXP192 I2C | SDA=21, SCL=22 |
 | Button A | GPIO37 (inverted) |
 | Button B | GPIO39 (inverted) |
-| IR Receiver (external TSOP38238) | GPIO26 |
+| IR Receiver (M5Stack IR Unit, Grove pin 2) | GPIO33 |
 
 ## Key Design Decisions
 

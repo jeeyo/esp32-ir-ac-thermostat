@@ -4,48 +4,35 @@ ESPHome firmware for M5StickC-Plus that controls a Trane AC unit via IR, with ac
 
 ## Features
 
-- **IR Control**: Send on/off commands to Trane AC via built-in IR LED (GPIO9)
+- **IR Control**: Send on/off commands to Trane AC via M5Stack IR Unit (GPIO32)
 - **Beep Confirmation**: Listens for the AC's confirmation beep using Goertzel single-frequency detection
 - **Retry Logic**: Up to 3 attempts per command if beep is not detected
 - **Amplitude Window**: Rejects beeps from adjacent rooms (different volume than the target unit)
 - **Passive Monitoring**: Continuously listens for beeps from the original remote to keep HA state in sync
-- **IR Learning**: Capture raw IR codes from your original remote via external TSOP38238 receiver
+- **IR Learning**: Capture raw IR codes from your original remote via M5Stack IR Unit receiver (GPIO33)
 - **Beep Calibration**: Measures the exact beep frequency and amplitude at your installation distance
 - **OLED Display**: Shows AC state, confirmation status, and current mode
 
 ## Hardware
 
 ### Required
-- M5StickC-Plus (ESP32-PICO with built-in display, IR LED, PDM mic)
+- M5StickC-Plus (ESP32-PICO with built-in display, PDM mic)
+- M5Stack IR Unit (SKU: U002)
 
-### Optional (for IR learning)
-- TSOP38238 IR receiver module
-- 3 jumper wires
+## Wiring: M5Stack IR Unit
 
-## Wiring: TSOP38238 IR Receiver
-
-Connect to the M5StickC-Plus Hat connector (top 8-pin):
+Connect the IR Unit to the M5StickC-Plus Grove port using the included HY2.0-4P cable:
 
 ```
-TSOP38238          M5StickC-Plus
-─────────          ─────────────
-  OUT  ──────────── GPIO26 (Hat G26)
-  GND  ──────────── GND
-  VCC  ──────────── 3.3V
+IR Unit (Grove)    M5StickC-Plus
+───────────────    ─────────────
+  Yellow (TX) ──── GPIO32 (Grove pin 1)
+  White  (RX) ──── GPIO33 (Grove pin 2)
+  Red   (5V)  ──── 5V
+  Black (GND) ──── GND
 ```
 
-Pin layout of TSOP38238 (front view, lens facing you):
-```
-  ┌───┐
-  │   │
-  │ O │  ← lens
-  │   │
-  └┬┬┬┘
-   │││
-   ││└── VCC (3.3V)
-   │└─── GND
-   └──── OUT (signal)
-```
+The IR Unit provides both the IR transmitter LED and demodulating IR receiver in a single Grove module — no additional wiring needed.
 
 ## Setup
 
@@ -79,9 +66,9 @@ esphome run ac-remote.yaml
 
 ### 4. Learn IR Codes
 
-1. Connect TSOP38238 to GPIO26 (see wiring above)
+1. Connect the M5Stack IR Unit to the Grove port (see wiring above)
 2. Short press **Button B** to enter IR Learn mode (display shows "IR LEARN")
-3. Point your Trane remote at the TSOP38238 and press the ON button
+3. Point your Trane remote at the IR Unit and press the ON button
 4. Check ESPHome logs for the raw code output
 5. Copy the raw code into `ac-remote.yaml` under `send_ac_on_attempt`
 6. Repeat for the OFF button → paste into `send_ac_off_attempt`
@@ -122,7 +109,7 @@ esphome run ac-remote.yaml
 
 ### Command Flow
 1. HA or Button A triggers `switch.ac_power`
-2. IR raw code is transmitted via GPIO9
+2. IR raw code is transmitted via M5Stack IR Unit (GPIO32)
 3. Microphone listens for confirmation beep (5-second window)
 4. If beep detected within amplitude window → switch state confirmed
 5. If no beep → retry (up to 3 attempts)
