@@ -137,6 +137,12 @@ display:
         it.printf(width / 2, 100, id(font_small), id(color_red), TextAlign::TOP_CENTER, "COMMAND FAILED");
       }
 
+      // ENV III: temperature and humidity (bottom line)
+      if (!isnan(id(env_temperature).state) && !isnan(id(env_humidity).state)) {
+        it.printf(width / 2, 118, id(font_small), id(color_white), TextAlign::TOP_CENTER,
+                  "%.1f\xc2\xb0""C  %.0f%%", id(env_temperature).state, id(env_humidity).state);
+      }
+
 # --- I2S Audio (PDM Microphone SPM1423) ---
 i2s_audio:
   - id: i2s_mic
@@ -299,6 +305,29 @@ sensor:
     name: "Beep Amplitude"
     id: beep_amplitude_sensor
     accuracy_decimals: 0
+
+  - platform: sht3xd
+    temperature:
+      name: "Temperature"
+      id: env_temperature
+      unit_of_measurement: "°C"
+      accuracy_decimals: 1
+    humidity:
+      name: "Humidity"
+      id: env_humidity
+      unit_of_measurement: "%"
+      accuracy_decimals: 1
+    address: 0x44
+    update_interval: 60s
+
+  - platform: qmp6988
+    pressure:
+      name: "Pressure"
+      id: env_pressure
+      unit_of_measurement: "hPa"
+      accuracy_decimals: 1
+    address: 0x70
+    update_interval: 60s
 
 # --- Scripts ---
 script:
