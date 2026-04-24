@@ -44,10 +44,13 @@ No toolchain needed. Download and flash in 2 minutes.
 1. Download the latest `ac-remote.bin` from [GitHub Releases](https://github.com/jeeyo/esp32-ir-remote/releases/latest)
 2. Open [ESPHome Web Installer](https://web.esphome.io/) in Chrome or Edge
 3. Click **Install** → select the `.bin` file → connect your M5StickC-Plus via USB-C
-4. Once flashed, open Home Assistant → **Settings → Devices & Services → Add Integration → ESPHome**
-5. Enter the device IP or hostname `ac-remote.local`
+4. On first boot, the device exposes a WiFi network named **AC-Remote-Fallback** (password `fallback123`). Connect to it with your phone; a captive portal opens where you enter your home WiFi credentials
+5. Once the device joins your network, open Home Assistant → **Settings → Devices & Services → Add Integration → ESPHome**
+6. Enter the device IP or hostname `ac-remote.local`. On first adoption, HA generates an API encryption key and stores it
 
 > After adopting, the device shows up with all entities. You'll need to learn your IR codes before the thermostat can actually control the AC — see [Learn IR Codes](#learn-ir-codes) below.
+>
+> The pre-built firmware does not hard-code WiFi, API encryption, or OTA credentials — those are configured post-install via the captive portal and Home Assistant. If you want to bake them in at build time, see [Setup from Source § Adding Your Secrets](#2-adding-your-secrets).
 
 ---
 
@@ -61,14 +64,18 @@ Use this path if you want to customise the firmware.
 pip install esphome
 ```
 
-### 2. Configure Secrets
+### 2. Adding Your Secrets
 
-Create `secrets.yaml` alongside `ac-remote.yaml`:
+`ac-remote.yaml` in this repo does **not** reference `secrets.yaml` — that keeps CI green and lets the pre-built firmware be flashed and configured via the captive portal. If you're building your own firmware locally, you have two options:
+
+**Option A — Edit `ac-remote.yaml` directly (quickest):**
+
+Create `secrets.yaml` next to `ac-remote.yaml`:
 
 ```yaml
 wifi_ssid: "YourWiFi"
 wifi_password: "YourPassword"
-api_encryption_key: "base64-32-bytes"   # see below
+api_encryption_key: "base64-32-bytes"
 ota_password: "your-ota-password"
 ```
 
@@ -77,6 +84,53 @@ Generate an API key:
 ```bash
 python3 -c "import secrets, base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"
 ```
+
+Then patch the `wifi:`, `api:`, and `ota:` blocks of `ac-remote.yaml`:
+
+```yaml
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "AC-Remote-Fallback"
+    password: "fallback123"
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+```
+
+`secrets.yaml` is in `.gitignore` — do not commit it.
+
+**Option B — Wrapper config (cleaner, survives `git pull`):**
+
+Create a new file `my-ac-remote.yaml` that includes the upstream config via a package and adds your secrets locally. This way you never modify `ac-remote.yaml`:
+
+```yaml
+substitutions:
+  name: my-ac-remote
+
+packages:
+  upstream: !include ac-remote.yaml
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+```
+
+Then build with `esphome run my-ac-remote.yaml`.
 
 ### 3. Build and Flash
 
