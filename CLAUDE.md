@@ -39,6 +39,7 @@ ESPHome firmware for M5StickC-Plus acting as an IR AC remote with acoustic beep 
 - **I2S PDM** — `allow_other_uses: true` on GPIO0 because PDM reuses the LRCLK pin for clock; BCLK is unused but required by ESPHome's schema.
 - **Amplitude window (min+max)** — rejects beeps from adjacent-room AC units at lower volume. Calibration finds the right window for this install.
 - **`beep_detector` uses `type: local`** — `external_components` source is `path: components` so CI and local builds read from the checked-out tree. Users building from a standalone YAML (without cloning) must change it to `github://jeeyo/esp32-ir-remote@<tag>`.
+- **AXP192 comes from `makerwolf/esphome-axp192`** — newer ESPHome no longer has the airy10 top-level `axp192:` schema; it's now a `sensor: platform: axp192` block. Required on M5StickC-Plus or the LCD backlight stays off.
 - **No `!secret` references in `ac-remote.yaml`** — keeps CI green and lets pre-built firmware be configured via captive portal. Users add secrets locally via a wrapper config or direct edit (see README § "Adding Your Secrets"). Do not re-introduce `!secret` without also adding CI handling.
 - **Thermostat disables itself on IR failure** — `command_failed` binary sensor `on_press` forces `climate.ac_thermostat` to OFF; user must re-enable in HA.
 - **AC internal setpoint is independent** — the thermostat only sends ON/OFF IR; the AC's own setpoint must be set cold (e.g. 18 °C) via its physical remote.

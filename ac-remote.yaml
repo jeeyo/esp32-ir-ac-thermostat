@@ -11,6 +11,8 @@ esp32:
 
 # --- External Components ---
 external_components:
+  - source: github://makerwolf/esphome-axp192@fd1d281
+    components: [axp192]
   - source:
       type: local
       path: components
@@ -34,17 +36,10 @@ ota:
 logger:
   level: DEBUG
 
-# --- AXP192 Power Management ---
+# --- I2C (shared bus for AXP192 PMU + ENV III HAT sensors) ---
 i2c:
   sda: GPIO21
   scl: GPIO22
-
-axp192:
-  id: pmu
-  model: M5STICKC
-  address: 0x34
-  i2c_id: i2c0
-  update_interval: 60s
 
 # --- SPI + Display ---
 spi:
@@ -413,6 +408,17 @@ sensor:
       accuracy_decimals: 1
     address: 0x70
     update_interval: 60s
+
+  # AXP192 power management (M5StickC-Plus): sets LDO voltages for the LCD
+  # backlight, exposes battery telemetry. Must be present or the display
+  # backlight stays off.
+  - platform: axp192
+    id: pmu
+    model: M5STICKC
+    address: 0x34
+    update_interval: 60s
+    battery_level:
+      name: "Battery Level"
 
 # --- Scripts ---
 script:

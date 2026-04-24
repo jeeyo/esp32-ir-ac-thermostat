@@ -275,6 +275,7 @@ automation:
 | `sensor.temperature` | Sensor | Room temperature from ENV HAT (°C) |
 | `sensor.humidity` | Sensor | Relative humidity (%) |
 | `sensor.pressure` | Sensor | Barometric pressure (hPa) |
+| `sensor.battery_level` | Sensor | M5StickC-Plus battery charge (%) from AXP192 |
 | `binary_sensor.ac_beep_confirmed` | Binary Sensor | Last IR command was acoustically confirmed |
 | `binary_sensor.ac_command_failed` | Binary Sensor | Last command failed after 3 retries |
 | `sensor.beep_frequency` | Sensor | Calibration: detected peak frequency (Hz) |
