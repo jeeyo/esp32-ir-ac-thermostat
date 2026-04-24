@@ -11,8 +11,9 @@ esp32:
 
 # --- External Components ---
 external_components:
-  - source: github://makerwolf/esphome-axp192@fd1d281
+  - source: github://makerwolf/esphome-axp192@master
     components: [axp192]
+    refresh: 1d
   - source:
       type: local
       path: components
