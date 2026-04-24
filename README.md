@@ -271,6 +271,7 @@ automation:
 | `number.cool_deadband` | Number | Tuning: °C above setpoint before cooling engages (default 0.5) |
 | `number.cool_overrun` | Number | Tuning: °C below setpoint before cooling disengages (default 0.5) |
 | `switch.ac_power` | Switch | Direct AC toggle (bypasses thermostat) |
+| `button.re_sync_ac_state` | Button | Flip the tracked AC state **without sending IR** — use when HA and the real AC have drifted out of sync |
 | `sensor.temperature` | Sensor | Room temperature from ENV HAT (°C) |
 | `sensor.humidity` | Sensor | Relative humidity (%) |
 | `sensor.pressure` | Sensor | Barometric pressure (hPa) |

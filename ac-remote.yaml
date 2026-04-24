@@ -298,6 +298,18 @@ number:
     set_action:
       - lambda: 'id(ac_thermostat).set_cool_overrun(x);'
 
+# --- Button: manual state re-sync (flips switch state without sending IR) ---
+button:
+  - platform: template
+    name: "Re-sync AC State"
+    id: resync_ac_state
+    on_press:
+      - lambda: 'id(ac_power_switch).publish_state(!id(ac_power_switch).state);'
+      - text_sensor.template.publish:
+          id: last_action_text
+          state: "State re-synced (no IR sent)"
+      - logger.log: "AC state manually toggled for re-sync (no IR sent)"
+
 # --- Binary Sensors ---
 binary_sensor:
   # Beep confirmation
