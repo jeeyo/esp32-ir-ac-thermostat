@@ -11,8 +11,6 @@ esp32:
 
 # --- External Components ---
 external_components:
-  - source: github://airy10/esphome-m5stickC
-    components: [axp192]
   - source:
       type: local
       path: components
