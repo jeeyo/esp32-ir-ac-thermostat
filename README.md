@@ -268,6 +268,8 @@ automation:
 | Entity | Type | Description |
 |--------|------|-------------|
 | `climate.ac_thermostat` | Climate | Thermostat — set target temp and mode (off/cool) |
+| `number.cool_deadband` | Number | Tuning: °C above setpoint before cooling engages (default 0.5) |
+| `number.cool_overrun` | Number | Tuning: °C below setpoint before cooling disengages (default 0.5) |
 | `switch.ac_power` | Switch | Direct AC toggle (bypasses thermostat) |
 | `sensor.temperature` | Sensor | Room temperature from ENV HAT (°C) |
 | `sensor.humidity` | Sensor | Relative humidity (%) |
@@ -296,12 +298,14 @@ Thermostat setpoint is adjusted via Home Assistant, not the device buttons.
 
 ### Thermostat Control
 
-The `climate.ac_thermostat` entity runs a bang-bang controller with 0.5 °C hysteresis:
+The `climate.ac_thermostat` entity runs a bang-bang controller with a configurable hysteresis band (default 1.0 °C total: 0.5 °C deadband + 0.5 °C overrun):
 
-- When room temp exceeds `target + 0.25 °C` → sends AC ON via IR (with beep confirmation)
-- When room temp drops below `target − 0.25 °C` → sends AC OFF via IR
+- When room temp exceeds `target + cool_deadband` → sends AC ON via IR (with beep confirmation)
+- When room temp drops below `target − cool_overrun` → sends AC OFF via IR
 - Compressor protection: minimum 3-minute run time, 5-minute off time before cycling
 - If 3 consecutive IR commands fail to get a beep confirmation, the thermostat forces itself to `off` mode and alerts via `binary_sensor.ac_command_failed`
+
+Tune the band live in HA via `number.cool_deadband` and `number.cool_overrun` — settings persist across reboots. Tighter bands hit the setpoint more precisely but may cycle the compressor more often (the min-run/off timers remain a hard floor).
 
 > **Important:** The thermostat sets the AC on/off, but cannot change the AC's internal setpoint. Leave the AC's own remote set to a cold temperature (e.g. 18 °C) so the thermostat's "on" bursts actually cool the room.
 
