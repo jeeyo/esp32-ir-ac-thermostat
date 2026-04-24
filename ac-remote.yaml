@@ -13,9 +13,9 @@ esp32:
 external_components:
   - source: github://airy10/esphome-m5stickC
     components: [axp192]
-  - source:
-      type: local
-      path: components
+  - source: github://jeeyo/esp32-ir-remote@main
+    components: [beep_detector]
+    refresh: 1d
 
 # --- Network ---
 wifi:
@@ -132,14 +132,27 @@ display:
       // Last action
       it.printf(width / 2, 80, id(font_small), id(color_white), TextAlign::TOP_CENTER, "%s", id(last_action_text).state.c_str());
 
+      // Thermostat target + action
+      {
+        auto tstat_mode   = id(ac_thermostat).mode;
+        auto tstat_action = id(ac_thermostat).action;
+        float target = id(ac_thermostat).target_temperature;
+        const char* mode_lbl = (tstat_mode == climate::CLIMATE_MODE_COOL) ? "COOL" :
+                               (tstat_mode == climate::CLIMATE_MODE_OFF)  ? "T-OFF" : "---";
+        const char* act_lbl  = (tstat_action == climate::CLIMATE_ACTION_COOLING) ? "cooling" :
+                               (tstat_action == climate::CLIMATE_ACTION_IDLE)    ? "idle" : "off";
+        it.printf(width / 2, 95, id(font_small), id(color_cyan), TextAlign::TOP_CENTER,
+                  "%s  set %.1f\xc2\xb0""C  [%s]", mode_lbl, target, act_lbl);
+      }
+
       // Command failed indicator
       if (id(command_failed).state) {
-        it.printf(width / 2, 100, id(font_small), id(color_red), TextAlign::TOP_CENTER, "COMMAND FAILED");
+        it.printf(width / 2, 112, id(font_small), id(color_red), TextAlign::TOP_CENTER, "COMMAND FAILED");
       }
 
       // ENV III: temperature and humidity (bottom line)
       if (!isnan(id(env_temperature).state) && !isnan(id(env_humidity).state)) {
-        it.printf(width / 2, 118, id(font_small), id(color_white), TextAlign::TOP_CENTER,
+        it.printf(width / 2, 125, id(font_small), id(color_white), TextAlign::TOP_CENTER,
                   "%.1f\xc2\xb0""C  %.0f%%", id(env_temperature).state, id(env_humidity).state);
       }
 
@@ -230,6 +243,35 @@ switch:
     turn_off_action:
       - script.execute: send_ac_off
 
+# --- Climate: Thermostat ---
+climate:
+  - platform: thermostat
+    name: "AC Thermostat"
+    id: ac_thermostat
+    sensor: env_temperature
+    min_cooling_off_time: 300s
+    min_cooling_run_time: 180s
+    min_idle_time: 300s
+    cool_deadband: 0.25
+    cool_overrun: 0.25
+    visual:
+      min_temperature: 18 °C
+      max_temperature: 30 °C
+      temperature_step: 0.5 °C
+    default_preset: Home
+    preset:
+      - name: Home
+        default_target_temperature_high: 24 °C
+        mode: "OFF"
+    cool_action:
+      - script.execute: send_ac_on
+    idle_action:
+      - script.execute: send_ac_off
+    off_mode:
+      - script.execute: send_ac_off
+    cool_mode:
+      - logger.log: "Thermostat: entering COOL mode"
+
 # --- Binary Sensors ---
 binary_sensor:
   # Beep confirmation
@@ -243,6 +285,13 @@ binary_sensor:
     name: "AC Command Failed"
     id: command_failed
     device_class: problem
+    on_press:
+      - climate.control:
+          id: ac_thermostat
+          mode: "OFF"
+      - text_sensor.template.publish:
+          id: last_action_text
+          state: "Thermostat disabled — IR failure"
 
   # Button A (GPIO37) — Toggle AC / Long press: Calibrate
   - platform: gpio
@@ -318,7 +367,7 @@ sensor:
       unit_of_measurement: "%"
       accuracy_decimals: 1
     address: 0x44
-    update_interval: 60s
+    update_interval: 15s
 
   - platform: qmp6988
     pressure:
