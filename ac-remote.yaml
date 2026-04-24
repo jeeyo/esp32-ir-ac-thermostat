@@ -208,7 +208,6 @@ remote_receiver:
     - pronto
   tolerance: 25%
   buffer_size: 10000b
-  timeout: 50ms
   idle: 10ms
 
 # --- Globals ---
