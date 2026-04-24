@@ -431,10 +431,10 @@ script:
           id(retry_count) += 1;
           ESP_LOGI("ac", "AC ON attempt %d/3", id(retry_count));
       # Send IR ON code
-      # Replace with your learned Trane IR code
+      # Replace with your learned AC IR code
       - remote_transmitter.transmit_raw:
           code: [
-            # Placeholder — replace with learned Trane ON code
+            # Placeholder — replace with learned ON code
             # Example NEC-like pattern for testing:
             9000, -4500,
             560, -560, 560, -560, 560, -560, 560, -560,
@@ -519,10 +519,10 @@ script:
           id(retry_count) += 1;
           ESP_LOGI("ac", "AC OFF attempt %d/3", id(retry_count));
       # Send IR OFF code
-      # Replace with your learned Trane OFF code
+      # Replace with your learned AC OFF IR code
       - remote_transmitter.transmit_raw:
           code: [
-            # Placeholder — replace with learned Trane OFF code
+            # Placeholder — replace with learned OFF code
             9000, -4500,
             560, -560, 560, -560, 560, -560, 560, -560,
             560, -560, 560, -560, 560, -560, 560, -560,

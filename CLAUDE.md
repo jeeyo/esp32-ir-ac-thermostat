@@ -1,6 +1,6 @@
 # ESP32 IR Remote — Claude Session Context
 
-ESPHome firmware for M5StickC-Plus acting as a Trane AC IR remote with acoustic beep confirmation and a smart thermostat, exposed as a `climate` entity in Home Assistant.
+ESPHome firmware for M5StickC-Plus acting as an IR AC remote with acoustic beep confirmation and a smart thermostat, exposed as a `climate` entity in Home Assistant. Brand-agnostic — works with any AC whose remote can be learned and that emits a confirmation beep.
 
 ## Files
 

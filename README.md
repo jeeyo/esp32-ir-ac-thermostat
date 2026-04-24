@@ -1,6 +1,6 @@
 # ESP32 IR Remote — Smart AC Controller
 
-ESPHome firmware for M5StickC-Plus that controls a Trane AC unit via IR with acoustic beep confirmation, and acts as a standalone smart thermostat using the onboard temperature sensor. Exposed as a full `climate` entity in Home Assistant — no cloud, no subscription.
+ESPHome firmware for M5StickC-Plus that controls an AC unit via IR with acoustic beep confirmation, and acts as a standalone smart thermostat using the onboard temperature sensor. Works with any AC that responds to an IR remote and emits a confirmation beep. Exposed as a full `climate` entity in Home Assistant — no cloud, no subscription.
 
 ## Features
 
@@ -151,10 +151,10 @@ The `beep_detector` custom component is loaded from the `components/` directory 
 
 ## Learn IR Codes
 
-The firmware ships with **placeholder IR codes**. You must replace them with codes learned from your actual Trane remote before the AC will respond.
+The firmware ships with **placeholder IR codes**. You must replace them with codes learned from your actual AC remote before the AC will respond.
 
 1. Short-press **Button B** — display shows `IR LEARN`
-2. Point your Trane remote at the IR Unit and press the **power ON** button
+2. Point your AC remote at the IR Unit and press the **power ON** button
 3. Open ESPHome logs (`esphome logs ac-remote.yaml`) and copy the `raw:` array
 4. Paste it into `ac-remote.yaml` under `send_ac_on_attempt` → `remote_transmitter.transmit_raw: code:`
 5. Repeat for the **power OFF** button → paste into `send_ac_off_attempt`
@@ -347,7 +347,7 @@ Multiple identical AC units in adjacent rooms produce the same beep frequency. T
 **IR codes don't work:**
 - Verify with a phone camera that the IR LED flashes when a command is sent
 - Try learning codes from a closer distance to the IR receiver
-- Some Trane models use long protocols — the receiver buffer is 10 KB which handles 100+ pulses
+- Some AC protocols are long — the receiver buffer is 10 KB which handles 100+ pulses
 
 **Temperature reading seems off:**
 - The SHT30 on the ENV HAT can read 1–2 °C high due to heat from the M5 body
