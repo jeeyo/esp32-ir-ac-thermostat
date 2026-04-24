@@ -13,9 +13,9 @@ esp32:
 external_components:
   - source: github://airy10/esphome-m5stickC
     components: [axp192]
-  - source: github://jeeyo/esp32-ir-remote@main
-    components: [beep_detector]
-    refresh: 1d
+  - source:
+      type: local
+      path: components
 
 # --- Network ---
 # WiFi credentials are intentionally not in this file. Configure WiFi via the

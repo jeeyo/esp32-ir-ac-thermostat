@@ -138,7 +138,14 @@ Then build with `esphome run my-ac-remote.yaml`.
 esphome run ac-remote.yaml
 ```
 
-ESPHome automatically fetches the `beep_detector` custom component from this repository — no manual component installation needed.
+The `beep_detector` custom component is loaded from the `components/` directory in this repo — clone the full repository before building.
+
+> If you want to build from just the YAML without cloning, change the `external_components` source in `ac-remote.yaml` from `type: local` to:
+> ```yaml
+>   - source: github://jeeyo/esp32-ir-remote@v0.1.0
+>     components: [beep_detector]
+> ```
+> (Replace `v0.1.0` with the release tag you want to pin to.)
 
 ---
 
