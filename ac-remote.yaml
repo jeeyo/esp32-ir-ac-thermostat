@@ -325,13 +325,14 @@ binary_sensor:
           state: "Thermostat disabled — IR failure"
 
   # Button A (GPIO37) — Toggle AC / Long press: Calibrate
+  # GPIO34-39 are input-only with no internal pulls; M5StickC-Plus provides
+  # external pullups on the PCB.
   - platform: gpio
     pin:
       number: GPIO37
       inverted: true
       mode:
         input: true
-        pullup: true
     id: button_a
     name: "Button A"
     internal: true
@@ -350,14 +351,13 @@ binary_sensor:
         then:
           - script.execute: start_calibration
 
-  # Button B (GPIO39) — IR Learn mode
+  # Button B (GPIO39) — IR Learn mode (GPIO34-39 input-only, no internal pulls)
   - platform: gpio
     pin:
       number: GPIO39
       inverted: true
       mode:
         input: true
-        pullup: true
     id: button_b
     name: "Button B"
     internal: true
