@@ -149,12 +149,11 @@ display:
       }
 
 # --- I2S Audio (PDM Microphone SPM1423) ---
+# PDM uses a single clock line (i2s_lrclk_pin) and a data line. Newer ESPHome
+# (2025.11+) no longer accepts the BCLK-shares-LRCLK trick, so omit i2s_bclk_pin.
 i2s_audio:
   - id: i2s_mic
     i2s_lrclk_pin: GPIO0
-    i2s_bclk_pin:
-      number: GPIO0  # PDM uses CLK on LRCLK pin; BCLK unused but required by schema
-      allow_other_uses: true
 
 microphone:
   - platform: i2s_audio
@@ -194,6 +193,7 @@ beep_detector:
 remote_transmitter:
   pin: GPIO32
   carrier_duty_percent: 50%
+  non_blocking: true
 
 # --- IR Receiver (M5Stack IR Unit RX — Grove pin 2, GPIO33) ---
 remote_receiver:

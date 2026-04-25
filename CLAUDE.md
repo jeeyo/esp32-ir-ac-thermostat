@@ -36,7 +36,7 @@ ESPHome firmware for M5StickC-Plus acting as an IR AC remote with acoustic beep 
 
 - **IR codes are placeholders** — must be learned via IR Learn mode and pasted into `send_ac_on_attempt` / `send_ac_off_attempt` raw arrays before the AC will respond.
 - **`optimistic: false` on `ac_power_switch`** — state only updates after beep confirmation or external-remote detection. Never publish state optimistically.
-- **I2S PDM** — `allow_other_uses: true` on GPIO0 because PDM reuses the LRCLK pin for clock; BCLK is unused but required by ESPHome's schema.
+- **I2S PDM** — only `i2s_lrclk_pin: GPIO0` (the clock) plus `i2s_din_pin: GPIO34` (the data). Don't add `i2s_bclk_pin` — it triggers a "pin used twice" error in ESPHome 2025.11+.
 - **Amplitude window (min+max)** — rejects beeps from adjacent-room AC units at lower volume. Calibration finds the right window for this install.
 - **`beep_detector` uses `type: local`** — `external_components` source is `path: components` so CI and local builds read from the checked-out tree. Users building from a standalone YAML (without cloning) must change it to `github://jeeyo/esp32-ir-remote@<tag>`.
 - **AXP192 comes from `makerwolf/esphome-axp192`** — newer ESPHome no longer has the airy10 top-level `axp192:` schema; it's now a `sensor: platform: axp192` block. Required on M5StickC-Plus or the LCD backlight stays off.
