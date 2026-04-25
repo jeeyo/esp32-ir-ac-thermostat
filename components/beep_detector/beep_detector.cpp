@@ -13,27 +13,29 @@ void BeepDetector::setup() {
   ESP_LOGI(TAG, "  Amplitude window: %.0f - %.0f", this->amplitude_min_, this->amplitude_max_);
   ESP_LOGI(TAG, "  Duration window: %d - %d ms", this->min_duration_ms_, this->max_duration_ms_);
 
-  this->audio_buffer_.reserve(CHUNK_SIZE);
-
-  // Start microphone for continuous monitoring
   if (this->mic_ != nullptr) {
+    this->mic_->add_data_callback([this](const std::vector<uint8_t> &data) {
+      this->on_audio_data(data);
+    });
     this->mic_->start();
   }
 }
 
 void BeepDetector::loop() {
-  if (this->paused_ || this->mic_ == nullptr) {
+  // YAML triggers must fire on the main loop, never the audio task.
+  if (this->beep_detected_pending_.exchange(false)) {
+    this->beep_detected_callback_.call();
+  }
+}
+
+void BeepDetector::on_audio_data(const std::vector<uint8_t> &data) {
+  if (this->paused_ || data.empty()) {
     return;
   }
-
-  // Read available audio data
-  // ESPHome microphone provides data via read() method
-  int16_t buf[CHUNK_SIZE];
-  size_t bytes_read = this->mic_->read(buf, sizeof(buf));
-  int samples_read = bytes_read / sizeof(int16_t);
-
-  if (samples_read > 0) {
-    this->process_audio(buf, samples_read);
+  const int16_t *samples = reinterpret_cast<const int16_t *>(data.data());
+  int num_samples = static_cast<int>(data.size() / sizeof(int16_t));
+  if (num_samples > 0) {
+    this->process_audio(samples, num_samples);
   }
 }
 
@@ -106,10 +108,10 @@ void BeepDetector::process_audio(const int16_t *data, int num_samples) {
       ESP_LOGD(TAG, "Beep offset (duration: %u ms, amplitude was: %.1f)", duration, magnitude);
 
       if ((int)duration >= this->min_duration_ms_ && (int)duration <= this->max_duration_ms_) {
-        // Valid beep detected!
+        // Valid beep detected — defer trigger fire to main loop.
         ESP_LOGI(TAG, "Valid beep detected! Duration: %u ms", duration);
         this->last_beep_time_ = now;
-        this->beep_detected_callback_.call();
+        this->beep_detected_pending_ = true;
       } else if ((int)duration > this->max_duration_ms_) {
         ESP_LOGD(TAG, "Beep too long (%u ms > %d ms), ignoring", duration, this->max_duration_ms_);
       } else {
