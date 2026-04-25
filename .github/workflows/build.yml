@@ -1,0 +1,13 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    uses: esphome/workflows/.github/workflows/build.yml@main
+    with:
+      files: ac-remote.yaml
+      esphome-version: latest

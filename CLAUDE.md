@@ -1,64 +1,51 @@
-# ESP32 IR Remote — Project Guide
+# ESP32 IR Remote — Claude Session Context
 
-## What This Is
+ESPHome firmware for M5StickC-Plus acting as an IR AC remote with acoustic beep confirmation and a smart thermostat, exposed as a `climate` entity in Home Assistant. Brand-agnostic — works with any AC whose remote can be learned and that emits a confirmation beep.
 
-ESPHome firmware for M5StickC-Plus that acts as a Trane AC IR remote with acoustic beep confirmation, exposed as a Home Assistant binary switch. The device sends IR on/off commands, then listens via the built-in PDM microphone for the AC's confirmation beep using a Goertzel single-frequency detector.
+## Files
 
-## Project Structure
-
-- `ac-remote.yaml` — Main ESPHome config. Contains everything: board setup, AXP192 PMU, ST7789V display, I2S PDM mic, IR TX/RX, template switch, retry scripts, button handlers, display lambda, all HA entities.
-- `secrets.yaml` — WiFi/API/OTA credentials (gitignored).
-- `components/beep_detector/` — Custom ESPHome component:
-  - `__init__.py` — Config schema and codegen (registers `beep_detector:` YAML block).
-  - `beep_detector.h` — C++ header. `BeepDetector` class, `CalibrationResult` struct, `BeepDetectedTrigger`.
-  - `beep_detector.cpp` — Goertzel algorithm, onset/offset tracking with duration validation, amplitude window filtering, calibration sweep (1–8 kHz), cooldown logic.
-- `fonts/roboto.ttf` — Display font.
-
-## Architecture
-
-### HA Entities
-- `switch.ac_power` — Binary switch, `optimistic: false`. State only updates after beep confirmation.
-- `binary_sensor.ac_beep_confirmed` — Last command was acoustically confirmed.
-- `binary_sensor.ac_command_failed` — Last command failed after 3 retries.
-- `sensor.beep_frequency` / `sensor.beep_amplitude` — Calibration results.
-- `text_sensor.last_action` — Human-readable status.
-
-### Command Flow
-HA/Button A → IR transmit → listen 5s for beep → if no beep, retry up to 3x → on failure, set `command_failed`, do NOT update switch state.
-
-### Passive Monitoring
-Mic runs continuously. Beep detected while `self_triggered=false` → external remote used → toggle switch state to sync HA. Cooldown prevents double-counting.
-
-### Modes (stored in `current_mode` global: 0=normal, 1=ir_learn, 2=calibrate)
-- **Normal**: AC control + passive beep monitoring.
-- **IR Learn** (Button B): Pauses beep detector, enables IR receiver raw+pronto dump to logs.
-- **Calibration** (Button A long press 3s): Pauses beep detector, sweeps 1–8 kHz for 10s, reports peak frequency + amplitude + suggested ±30% window.
+- `ac-remote.yaml` — entire ESPHome config (board, display, mic, IR, thermostat, sensors, scripts, automations)
+- `secrets.yaml` — WiFi/API/OTA credentials (gitignored)
+- `components/beep_detector/` — custom ESPHome component: `__init__.py` (schema/codegen), `beep_detector.h`, `beep_detector.cpp` (Goertzel detector, calibration sweep)
+- `fonts/roboto.ttf` — display font
+- `.github/workflows/build.yml` — CI build on push/PR via `esphome/workflows`
+- `.github/workflows/release.yml` — build + publish firmware to GH release on `v*` tag
 
 ## Hardware Pins (M5StickC-Plus)
 
 | Function | Pin |
 |---|---|
-| IR LED TX | GPIO32 (M5Stack IR Unit, Grove pin 1) |
+| IR LED TX | GPIO32 (Grove pin 1) |
+| IR Receiver | GPIO33 (Grove pin 2) |
 | PDM Mic CLK | GPIO0 |
 | PDM Mic DATA | GPIO34 |
 | Display SPI | CLK=13, MOSI=15, CS=5, DC=23, RST=18 |
-| AXP192 I2C | SDA=21, SCL=22 |
+| AXP192 / ENV HAT I2C | SDA=21, SCL=22 |
 | Button A | GPIO37 (inverted) |
 | Button B | GPIO39 (inverted) |
-| IR Receiver (M5Stack IR Unit, Grove pin 2) | GPIO33 |
 
-## Key Design Decisions
+## Modes (`current_mode` global)
 
-- **Amplitude window (min+max), not just threshold**: Multiple identical AC units in adjacent rooms produce the same frequency beep. The window rejects quieter beeps from distant units.
-- **Goertzel over FFT**: Only need one frequency bin. O(N) per frequency, very low CPU.
-- **3 Goertzel bins** (center ± tolerance): Handles slight frequency drift between AC units.
-- **IR codes are placeholders**: Must be learned from the actual Trane remote via IR Learn mode, then pasted into the YAML raw code arrays in `send_ac_on_attempt` and `send_ac_off_attempt` scripts.
-- **`optimistic: false`**: Switch state never updates unless beep-confirmed or externally detected.
+| Value | Mode | Entry |
+|---|---|---|
+| 0 | Normal | default |
+| 1 | IR Learn | Button B short press |
+| 2 | Calibrate | Button A long press 3s |
 
-## Development Notes
+## Non-obvious constraints
 
-- External dependency: `axp192` from `github://airy10/esphome-m5stickC` for power management.
-- IR receiver buffer is 10KB (`buffer_size: 10000b`) because Trane AC protocols can be 100+ pulses.
-- The I2S config uses `allow_other_uses: true` on GPIO0 because PDM mode reuses the LRCLK pin for clock (no separate BCLK).
-- Build/flash: `esphome run ac-remote.yaml`.
-- If ESPHome's I2S component doesn't handle PDM correctly, fallback is to initialize I2S directly in `beep_detector.cpp` using ESP-IDF APIs.
+- **IR codes are placeholders** — must be learned via IR Learn mode and pasted into `send_ac_on_attempt` / `send_ac_off_attempt` raw arrays before the AC will respond.
+- **`optimistic: false` on `ac_power_switch`** — state only updates after beep confirmation or external-remote detection. Never publish state optimistically.
+- **I2S PDM** — only `i2s_lrclk_pin: GPIO0` (the clock) plus `i2s_din_pin: GPIO34` (the data). Don't add `i2s_bclk_pin` — it triggers a "pin used twice" error in ESPHome 2025.11+.
+- **Amplitude window (min+max)** — rejects beeps from adjacent-room AC units at lower volume. Calibration finds the right window for this install.
+- **`beep_detector_source` substitution** — `external_components` source for `beep_detector` is `${beep_detector_source}`, defaulting to `components` (local path) so cloned builds and CI work as-is. No-clone users override the substitution to `github://jeeyo/esp32-ir-remote@<tag>` from a wrapper YAML. Same pattern for `ota_password` (default empty, override with `!secret`).
+- **AXP192 comes from `makerwolf/esphome-axp192`** — newer ESPHome no longer has the airy10 top-level `axp192:` schema; it's now a `sensor: platform: axp192` block. Required on M5StickC-Plus or the LCD backlight stays off.
+- **No `!secret` references in `ac-remote.yaml`** — keeps CI green and lets pre-built firmware be configured via captive portal. Users add secrets locally via a wrapper config or direct edit (see README § "Adding Your Secrets"). Do not re-introduce `!secret` without also adding CI handling.
+- **Thermostat disables itself on IR failure** — `command_failed` binary sensor `on_press` forces `climate.ac_thermostat` to OFF; user must re-enable in HA.
+- **AC internal setpoint is independent** — the thermostat only sends ON/OFF IR; the AC's own setpoint must be set cold (e.g. 18 °C) via its physical remote.
+
+## Build
+
+```bash
+esphome run ac-remote.yaml
+```

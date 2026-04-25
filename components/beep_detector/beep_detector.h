@@ -3,6 +3,7 @@
 #include "esphome/core/component.h"
 #include "esphome/core/automation.h"
 #include "esphome/components/microphone/microphone.h"
+#include <atomic>
 #include <vector>
 
 namespace esphome {
@@ -49,6 +50,9 @@ class BeepDetector : public Component {
   /// Process a chunk of audio samples.
   void process_audio(const int16_t *data, int num_samples);
 
+  /// Audio data callback (invoked by microphone task; must not call YAML triggers directly).
+  void on_audio_data(const std::vector<uint8_t> &data);
+
   microphone::Microphone *mic_{nullptr};
 
   // Configuration
@@ -61,24 +65,23 @@ class BeepDetector : public Component {
   int sample_rate_{16000};
   int cooldown_ms_{5000};
 
-  // State
-  bool self_triggered_{false};
-  bool paused_{false};
+  // State (mutated from audio task; reads from main loop are tolerant of races)
+  std::atomic<bool> self_triggered_{false};
+  std::atomic<bool> paused_{false};
   bool beep_active_{false};
   uint32_t beep_start_time_{0};
   uint32_t last_beep_time_{0};
 
+  // Bridge between audio task and main loop: set by callback, drained by loop().
+  std::atomic<bool> beep_detected_pending_{false};
+
   // Calibration
-  bool calibrating_{false};
+  std::atomic<bool> calibrating_{false};
   float cal_peak_frequency_{0.0f};
   float cal_peak_amplitude_{0.0f};
   static constexpr int CAL_FREQ_START = 1000;
   static constexpr int CAL_FREQ_END = 8000;
   static constexpr int CAL_FREQ_STEP = 100;
-
-  // Audio buffer
-  std::vector<int16_t> audio_buffer_;
-  static constexpr int CHUNK_SIZE = 256;
 
   CallbackManager<void()> beep_detected_callback_;
 };
