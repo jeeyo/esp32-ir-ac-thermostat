@@ -471,7 +471,7 @@ script:
           value: "true"
       - text_sensor.template.publish:
           id: last_action_text
-          state: !lambda '"ON attempt " + to_string(id(retry_count)) + "/3 — listening..."'
+          state: !lambda 'return "ON attempt " + to_string(id(retry_count)) + "/3 — listening...";'
       # Wait for beep (5s window)
       - delay: 5s
       - lambda: 'id(beep_det).set_self_triggered(false);'
@@ -488,7 +488,7 @@ script:
                 state: true
             - text_sensor.template.publish:
                 id: last_action_text
-                state: !lambda '"ON confirmed (attempt " + to_string(id(retry_count)) + ")"'
+                state: !lambda 'return "ON confirmed (attempt " + to_string(id(retry_count)) + ")";'
           else:
             - if:
                 condition:
@@ -496,7 +496,7 @@ script:
                 then:
                   - text_sensor.template.publish:
                       id: last_action_text
-                      state: !lambda '"No beep — retrying (" + to_string(id(retry_count)) + "/3)"'
+                      state: !lambda 'return "No beep — retrying (" + to_string(id(retry_count)) + "/3)";'
                   - delay: 1s
                   - script.execute: send_ac_on_attempt
                 else:
@@ -557,7 +557,7 @@ script:
           value: "true"
       - text_sensor.template.publish:
           id: last_action_text
-          state: !lambda '"OFF attempt " + to_string(id(retry_count)) + "/3 — listening..."'
+          state: !lambda 'return "OFF attempt " + to_string(id(retry_count)) + "/3 — listening...";'
       - delay: 5s
       - lambda: 'id(beep_det).set_self_triggered(false);'
       - globals.set:
@@ -572,7 +572,7 @@ script:
                 state: false
             - text_sensor.template.publish:
                 id: last_action_text
-                state: !lambda '"OFF confirmed (attempt " + to_string(id(retry_count)) + ")"'
+                state: !lambda 'return "OFF confirmed (attempt " + to_string(id(retry_count)) + ")";'
           else:
             - if:
                 condition:
@@ -580,7 +580,7 @@ script:
                 then:
                   - text_sensor.template.publish:
                       id: last_action_text
-                      state: !lambda '"No beep — retrying (" + to_string(id(retry_count)) + "/3)"'
+                      state: !lambda 'return "No beep — retrying (" + to_string(id(retry_count)) + "/3)";'
                   - delay: 1s
                   - script.execute: send_ac_off_attempt
                 else:
