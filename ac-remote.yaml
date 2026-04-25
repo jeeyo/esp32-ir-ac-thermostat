@@ -4,6 +4,17 @@ esphome:
   platformio_options:
     board_build.f_cpu: 240000000L
 
+# --- Substitutions ---
+# Override these in a wrapper YAML to build without cloning the repo and to
+# bake in your secrets at compile time. See README § "Setup from Source".
+substitutions:
+  # Where to load the bundled `beep_detector` custom component from.
+  # Default = local path (used when this repo is cloned, and by CI).
+  # No-clone builds override to `github://jeeyo/esp32-ir-remote@<tag>`.
+  beep_detector_source: components
+  # Optional OTA upload password. Empty = no password. Override with !secret.
+  ota_password: ""
+
 esp32:
   board: m5stick-c
   framework:
@@ -14,9 +25,8 @@ external_components:
   - source: github://makerwolf/esphome-axp192@master
     components: [axp192]
     refresh: 1d
-  - source:
-      type: local
-      path: components
+  - source: ${beep_detector_source}
+    components: [beep_detector]
 
 # --- Network ---
 # WiFi credentials are intentionally not in this file. Configure WiFi via the
@@ -33,6 +43,7 @@ api:
 
 ota:
   - platform: esphome
+    password: ${ota_password}
 
 logger:
   level: DEBUG

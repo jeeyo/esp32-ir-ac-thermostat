@@ -50,13 +50,15 @@ No toolchain needed. Download and flash in 2 minutes.
 
 > After adopting, the device shows up with all entities. You'll need to learn your IR codes before the thermostat can actually control the AC — see [Learn IR Codes](#learn-ir-codes) below.
 >
-> The pre-built firmware does not hard-code WiFi, API encryption, or OTA credentials — those are configured post-install via the captive portal and Home Assistant. If you want to bake them in at build time, see [Setup from Source § Adding Your Secrets](#2-adding-your-secrets).
+> The pre-built firmware does not hard-code WiFi, API encryption, or OTA credentials — those are configured post-install via the captive portal and Home Assistant. If you want to bake them in at build time, see [Setup from Source](#setup-from-source).
 
 ---
 
 ## Setup from Source
 
-Use this path if you want to customise the firmware.
+Build your own firmware with WiFi / API / OTA credentials baked in. **You do not need to clone this repo** — a small wrapper YAML pulls everything from GitHub.
+
+You only create two files: `secrets.yaml` and `my-ac-remote.yaml`.
 
 ### 1. Install ESPHome
 
@@ -64,58 +66,43 @@ Use this path if you want to customise the firmware.
 pip install esphome
 ```
 
-### 2. Adding Your Secrets
+### 2. Pick a release tag
 
-`ac-remote.yaml` in this repo does **not** reference `secrets.yaml` — that keeps CI green and lets the pre-built firmware be flashed and configured via the captive portal. If you're building your own firmware locally, you have two options:
+Browse [Releases](https://github.com/jeeyo/esp32-ir-remote/releases) and pick the version you want to build (e.g. `v0.1.0`). Use the same tag in **both** places below so the upstream YAML and the bundled `beep_detector` component come from the same commit.
 
-**Option A — Edit `ac-remote.yaml` directly (quickest):**
-
-Create `secrets.yaml` next to `ac-remote.yaml`:
+### 3. Create `secrets.yaml`
 
 ```yaml
 wifi_ssid: "YourWiFi"
-wifi_password: "YourPassword"
+wifi_password: "YourWiFiPassword"
 api_encryption_key: "base64-32-bytes"
 ota_password: "your-ota-password"
 ```
 
-Generate an API key:
+Generate the API key:
 
 ```bash
 python3 -c "import secrets, base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"
 ```
 
-Then patch the `wifi:`, `api:`, and `ota:` blocks of `ac-remote.yaml`:
+`secrets.yaml` should stay out of version control — add it to `.gitignore` if you keep your wrapper config in a repo.
 
-```yaml
-wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-  ap:
-    ssid: "AC-Remote-Fallback"
-    password: "fallback123"
+### 4. Create `my-ac-remote.yaml`
 
-api:
-  encryption:
-    key: !secret api_encryption_key
-
-ota:
-  - platform: esphome
-    password: !secret ota_password
-```
-
-`secrets.yaml` is in `.gitignore` — do not commit it.
-
-**Option B — Wrapper config (cleaner, survives `git pull`):**
-
-Create a new file `my-ac-remote.yaml` that includes the upstream config via a package and adds your secrets locally. This way you never modify `ac-remote.yaml`:
+This is the only config file you build with. It pulls `ac-remote.yaml` and the `beep_detector` component straight from GitHub at the tag you picked, and layers your secrets on top.
 
 ```yaml
 substitutions:
-  name: my-ac-remote
+  # Tell the upstream config to fetch beep_detector from GitHub at the same tag.
+  beep_detector_source: github://jeeyo/esp32-ir-remote@v0.1.0
+  ota_password: !secret ota_password
 
 packages:
-  upstream: !include ac-remote.yaml
+  upstream:
+    url: https://github.com/jeeyo/esp32-ir-remote
+    ref: v0.1.0
+    files: [ac-remote.yaml]
+    refresh: 1d
 
 wifi:
   ssid: !secret wifi_ssid
@@ -124,28 +111,36 @@ wifi:
 api:
   encryption:
     key: !secret api_encryption_key
-
-ota:
-  - platform: esphome
-    password: !secret ota_password
 ```
 
-Then build with `esphome run my-ac-remote.yaml`.
+The wrapper:
 
-### 3. Build and Flash
+- **`packages.upstream`** pulls `ac-remote.yaml` from GitHub at the chosen tag.
+- **`substitutions.beep_detector_source`** redirects the upstream's local-path component reference to GitHub, so no clone is needed.
+- **`substitutions.ota_password`** fills in the OTA password (the upstream defaults to empty).
+- **`wifi`** / **`api`** are dict-merged with the upstream blocks: your station credentials and API encryption key get added without removing the captive-portal AP fallback.
+
+> Bump the tag in **both** `beep_detector_source` and `packages.upstream.ref` together when you want to upgrade.
+
+### 5. Build and flash
+
+USB:
 
 ```bash
-esphome run ac-remote.yaml
+esphome run my-ac-remote.yaml
 ```
 
-The `beep_detector` custom component is loaded from the `components/` directory in this repo — clone the full repository before building.
+OTA (subsequent updates, no cable needed):
 
-> If you want to build from just the YAML without cloning, change the `external_components` source in `ac-remote.yaml` from `type: local` to:
-> ```yaml
->   - source: github://jeeyo/esp32-ir-remote@v0.1.0
->     components: [beep_detector]
-> ```
-> (Replace `v0.1.0` with the release tag you want to pin to.)
+```bash
+esphome run my-ac-remote.yaml --device ac-remote.local
+```
+
+ESPHome downloads the upstream YAML and the `beep_detector` source on first build and caches them; pass `--cache off` if you ever need to force a re-fetch.
+
+### Developer / contributor build
+
+If you're modifying this repo itself, clone it and build `ac-remote.yaml` directly — the substitutions default to the local `components/` path, so no wrapper is needed. Drop `wifi:` / `api:` / `ota_password:` overrides into a sibling `secrets.yaml` and patch the YAML, or create a wrapper that points `packages.upstream: !include ac-remote.yaml` at the local file.
 
 ---
 
