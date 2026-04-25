@@ -132,7 +132,7 @@ display:
         const char* mode_lbl = (tstat_mode == climate::CLIMATE_MODE_COOL) ? "COOL" :
                                (tstat_mode == climate::CLIMATE_MODE_OFF)  ? "T-OFF" : "---";
         const char* act_lbl  = (tstat_action == climate::CLIMATE_ACTION_COOLING) ? "cooling" :
-                               (tstat_action == climate::CLIMATE_ACTION_IDLE)    ? "idle" : "off";
+                               (tstat_action == climate::CLIMATE_ACTION_IDLE)    ? "soft-off" : "off";
         it.printf(width / 2, 95, id(font_small), id(color_cyan), TextAlign::TOP_CENTER,
                   "%s  set %.1f\xc2\xb0""C  [%s]", mode_lbl, target, act_lbl);
       }
@@ -257,7 +257,7 @@ climate:
     cool_action:
       - script.execute: send_ac_on
     idle_action:
-      - script.execute: send_ac_off
+      - script.execute: send_ac_setpoint_high
     off_mode:
       - script.execute: send_ac_off
     cool_mode:
@@ -587,6 +587,93 @@ script:
                   - text_sensor.template.publish:
                       id: last_action_text
                       state: "OFF FAILED after 3 attempts"
+                  - binary_sensor.template.publish:
+                      id: command_failed
+                      state: true
+                  - globals.set:
+                      id: retry_count
+                      value: "0"
+
+  # Send AC HIGH SETPOINT (soft idle) with retry logic
+  # Keeps the AC unit energised but sets its internal setpoint to max so the
+  # compressor cuts out. The AC stays on; only off_mode sends a full power-off.
+  - id: send_ac_setpoint_high
+    mode: restart
+    then:
+      - globals.set:
+          id: retry_count
+          value: "0"
+      - binary_sensor.template.publish:
+          id: beep_confirmed
+          state: false
+      - binary_sensor.template.publish:
+          id: command_failed
+          state: false
+      - text_sensor.template.publish:
+          id: last_action_text
+          state: "Sending HI-SETPT..."
+      - script.execute: send_ac_setpoint_high_attempt
+
+  - id: send_ac_setpoint_high_attempt
+    mode: restart
+    then:
+      - lambda: |-
+          id(retry_count) += 1;
+          ESP_LOGI("ac", "AC HI-SETPT attempt %d/3", id(retry_count));
+      # Send IR high-setpoint code
+      # Replace with your learned "AC set to max temperature" IR code
+      - remote_transmitter.transmit_raw:
+          code: [
+            # Placeholder — replace with learned HIGH-SETPOINT code
+            # (e.g. AC in COOL mode at 30 °C so compressor doesn't engage)
+            9000, -4500,
+            560, -1690, 560, -1690, 560, -1690, 560, -1690,
+            560, -1690, 560, -1690, 560, -1690, 560, -1690,
+            560, -560, 560, -560, 560, -560, 560, -560,
+            560, -560, 560, -560, 560, -560, 560, -560,
+            560, -1690, 560, -1690, 560, -1690, 560, -1690,
+            560, -1690, 560, -1690, 560, -1690, 560, -1690,
+            560, -560, 560, -560, 560, -560, 560, -560,
+            560, -560, 560, -560, 560, -560, 560, -560,
+            560, -39000
+          ]
+          carrier_frequency: 38000Hz
+      - lambda: 'id(beep_det).set_self_triggered(true);'
+      - globals.set:
+          id: waiting_for_beep
+          value: "true"
+      - text_sensor.template.publish:
+          id: last_action_text
+          state: !lambda 'return "HI-SETPT attempt " + to_string(id(retry_count)) + "/3 — listening...";'
+      - delay: 5s
+      - lambda: 'id(beep_det).set_self_triggered(false);'
+      - globals.set:
+          id: waiting_for_beep
+          value: "false"
+      - if:
+          condition:
+            binary_sensor.is_on: beep_confirmed
+          then:
+            - switch.template.publish:
+                id: ac_power_switch
+                state: true
+            - text_sensor.template.publish:
+                id: last_action_text
+                state: !lambda 'return "HI-SETPT confirmed (attempt " + to_string(id(retry_count)) + ")";'
+          else:
+            - if:
+                condition:
+                  lambda: 'return id(retry_count) < 3;'
+                then:
+                  - text_sensor.template.publish:
+                      id: last_action_text
+                      state: !lambda 'return "No beep — retrying (" + to_string(id(retry_count)) + "/3)";'
+                  - delay: 1s
+                  - script.execute: send_ac_setpoint_high_attempt
+                else:
+                  - text_sensor.template.publish:
+                      id: last_action_text
+                      state: "HI-SETPT FAILED after 3 attempts"
                   - binary_sensor.template.publish:
                       id: command_failed
                       state: true
