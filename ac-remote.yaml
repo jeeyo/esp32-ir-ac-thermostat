@@ -193,6 +193,7 @@ beep_detector:
         if (id(beep_det).is_self_triggered()) {
           // Our own command was confirmed
           ESP_LOGI("beep", "Self-triggered beep confirmed");
+          id(beep_confirmed).publish_state(true);
         } else {
           // External remote used — toggle state
           ESP_LOGI("beep", "External beep detected — toggling state");
